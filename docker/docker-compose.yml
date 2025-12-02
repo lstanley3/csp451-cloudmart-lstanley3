@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+  backend:
+    build:
+      context: ../applications/backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://cloudmart:password@postgres:5432/cloudmart
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=password
+      - JWT_SECRET=dev-secret-key
+      - ALLOWED_ORIGINS=http://localhost:3000
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cloudmart
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=cloudmart
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=cloudmart
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cloudmart
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass password
+    networks:
+      - cloudmart
+
+networks:
+  cloudmart:
+    driver: bridge
+
+volumes:
+  postgres_data:
