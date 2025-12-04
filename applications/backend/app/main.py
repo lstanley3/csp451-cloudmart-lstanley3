@@ -1,47 +1,62 @@
 from fastapi import FastAPI
-from typing import List
-
-from app.database import Database  # uses your existing Database class
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="CloudMart API",
-    description="Backend for CSP451 CloudMart project",
+    description="Simplified CloudMart backend for CSP451 project",
     version="0.1.0",
 )
 
-# Create a global Database object
-db = Database()
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Connect to the database when the app starts"""
-    await db.connect()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Disconnect from the database when the app stops"""
-    await db.disconnect()
+# Allow the Vite dev server (5173) to call the backend (8000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # for local dev; later you can tighten this
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
-async def health_check():
-    """Basic health check"""
+async def health():
+    """Basic health check endpoint."""
     return {"status": "healthy", "service": "cloudmart-api"}
 
 
-@app.get("/products")
-async def list_products() -> List[dict]:
+@app.get("/api/v1/products")
+async def get_products():
     """
-    Return a simple list of products from the database.
-    For now, just id, name, price, stock.
+    Simple products endpoint (fake data for now).
+    Later you could hook this up to PostgreSQL, but this is enough
+    to prove frontend ↔ backend communication.
     """
-    query = """
-        SELECT id, name, description, category, price, stock
-        FROM products
-        ORDER BY name;
-    """
-    products = await db.fetch_all(query)
+    products = [
+        {
+            "id": 1,
+            "name": "Wireless Headphones",
+            "category": "Electronics",
+            "price": 199.99,
+            "stock": 25,
+        },
+        {
+            "id": 2,
+            "name": "Smart Watch",
+            "category": "Electronics",
+            "price": 299.99,
+            "stock": 15,
+        },
+        {
+            "id": 3,
+            "name": "Running Shoes",
+            "category": "Sports",
+            "price": 89.99,
+            "stock": 40,
+        },
+    ]
     return products
 
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
