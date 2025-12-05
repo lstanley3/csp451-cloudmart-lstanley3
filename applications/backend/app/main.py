@@ -1,9 +1,10 @@
 from typing import List
+import uuid
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.models import CartItem, CartResponse
+from app.models import CartItem, CartResponse, CheckoutResponse
 
 app = FastAPI(
     title="CloudMart API",
@@ -86,6 +87,40 @@ async def add_to_cart(item: CartItem):
         fake_cart.append(item)
 
     return CartResponse(items=fake_cart)
+
+
+# --------- CHECKOUT ENDPOINT ---------
+
+
+@app.post("/api/v1/checkout", response_model=CheckoutResponse)
+async def checkout():
+    """
+    Simulate checkout:
+    - Generate a fake confirmation number
+    - Return current cart items
+    - Clear the cart afterwards
+    """
+    items_copy = list(fake_cart)
+
+    if not items_copy:
+        # No items in cart
+        return CheckoutResponse(
+            success=False,
+            confirmation_number="",
+            items=[],
+        )
+
+    # Generate a fake confirmation number
+    confirmation = f"ORD-{uuid.uuid4().hex[:8]}"
+
+    # Clear the cart
+    fake_cart.clear()
+
+    return CheckoutResponse(
+        success=True,
+        confirmation_number=confirmation,
+        items=items_copy,
+    )
 
 
 if __name__ == "__main__":
