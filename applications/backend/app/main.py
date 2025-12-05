@@ -1,5 +1,9 @@
+from typing import List
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.models import CartItem, CartResponse
 
 app = FastAPI(
     title="CloudMart API",
@@ -54,6 +58,34 @@ async def get_products():
         },
     ]
     return products
+
+
+# --------- SIMPLE IN-MEMORY CART ---------
+
+# one global cart for demo purposes
+fake_cart: List[CartItem] = []
+
+
+@app.get("/api/v1/cart", response_model=CartResponse)
+async def get_cart():
+    """Return current cart contents."""
+    return CartResponse(items=fake_cart)
+
+
+@app.post("/api/v1/cart", response_model=CartResponse)
+async def add_to_cart(item: CartItem):
+    """
+    Add an item to the cart.
+    If the product is already in the cart, increase quantity.
+    """
+    for existing in fake_cart:
+        if existing.product_id == item.product_id:
+            existing.quantity += item.quantity
+            break
+    else:
+        fake_cart.append(item)
+
+    return CartResponse(items=fake_cart)
 
 
 if __name__ == "__main__":

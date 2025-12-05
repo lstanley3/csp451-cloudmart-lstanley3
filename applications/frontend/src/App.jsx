@@ -1,60 +1,90 @@
 import { useEffect, useState } from 'react';
-import { getHealth, getProducts } from './services/api';
+import {
+  getHealth,
+  getProducts,
+  addToCart,
+  getCart,
+} from './services/api';
 
 function App() {
   const [backendStatus, setBackendStatus] = useState('Checking...');
   const [products, setProducts] = useState([]);
-  const [productError, setProductError] = useState('');
+  const [cartItems, setCartItems] = useState([]);
 
   useEffect(() => {
-    async function load() {
-      // 1) Check backend health
+    async function init() {
       try {
-        const data = await getHealth();
-        if (data.status === 'healthy') {
-          setBackendStatus(`OK (${data.service})`);
+        // 1) Health check
+        const healthData = await getHealth();
+        if (healthData.status === 'healthy') {
+          setBackendStatus(`OK (${healthData.service})`);
         } else {
-          setBackendStatus(`Unexpected status: ${data.status}`);
+          setBackendStatus(`Unexpected status: ${healthData.status}`);
         }
-      } catch (err) {
-        console.error('Health check failed:', err);
-        setBackendStatus('Backend not reachable');
-        return; // if health fails, skip products
-      }
 
-      // 2) Fetch products
-      try {
-        const items = await getProducts();
-        setProducts(items);
+        // 2) Load products
+        const productsData = await getProducts();
+        setProducts(productsData);
+
+        // 3) Load cart
+        const cartData = await getCart();        // { items: [...] }
+        setCartItems(cartData.items || []);
       } catch (err) {
-        console.error('Failed to load products:', err);
-        setProductError('Could not load products');
+        console.error('Init failed:', err);
+        setBackendStatus('Backend not reachable');
       }
     }
 
-    load();
+    init();
   }, []);
 
+  async function handleAddToCart(productId) {
+    try {
+      const updatedCart = await addToCart(productId, 1); // { items: [...] }
+      setCartItems(updatedCart.items || []);
+    } catch (err) {
+      console.error('Add to cart failed:', err);
+      alert('Could not add to cart');
+    }
+  }
+
   return (
-    <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ padding: '1.5rem', fontFamily: 'sans-serif' }}>
       <h1>CloudMart Frontend</h1>
-      <p><strong>Backend API Status:</strong> {backendStatus}</p>
+      <p>Backend API Status: {backendStatus}</p>
 
-      <hr style={{ margin: '1.5rem 0' }} />
+      <hr />
 
-      <h2>Product Catalog (demo)</h2>
-      {productError && <p style={{ color: 'red' }}>{productError}</p>}
-
-      {products.length === 0 && !productError && (
-        <p>Loading products...</p>
-      )}
-
-      {products.length > 0 && (
+      <h2>Products</h2>
+      {products.length === 0 ? (
+        <p>No products loaded.</p>
+      ) : (
         <ul>
           {products.map((p) => (
-            <li key={p.id}>
-              <strong>{p.name}</strong> – {p.category} – ${p.price}{' '}
-              (stock: {p.stock})
+            <li key={p.id} style={{ marginBottom: '0.5rem' }}>
+              <strong>{p.name}</strong>{' '}
+              — ${p.price.toFixed(2)} ({p.category}) — Stock: {p.stock}
+              <button
+                style={{ marginLeft: '0.75rem' }}
+                onClick={() => handleAddToCart(p.id)}
+              >
+                Add to Cart
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <hr />
+
+      <h2>Cart</h2>
+      {cartItems.length === 0 ? (
+        <p>Cart is empty.</p>
+      ) : (
+        <ul>
+          {cartItems.map((item) => (
+            <li key={item.product_id}>
+              Product #{item.product_id} — Quantity: {item.quantity}
             </li>
           ))}
         </ul>
