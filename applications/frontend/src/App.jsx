@@ -1,25 +1,21 @@
 // applications/frontend/src/App.jsx
-
 import { useEffect, useState } from 'react';
 import {
   getHealth,
   getProducts,
   getCart,
   addToCart,
-  checkoutCart,
 } from './services/api';
 
 function App() {
   const [backendStatus, setBackendStatus] = useState('Checking...');
   const [products, setProducts] = useState([]);
   const [cartItems, setCartItems] = useState([]);
-  const [checkoutMessage, setCheckoutMessage] = useState('');
+  const [checkoutMessage, setCheckoutMessage] = useState(null);
 
-  // Initial load: health, products, cart
   useEffect(() => {
     async function init() {
       try {
-        // 1) Health check
         const health = await getHealth();
         if (health.status === 'healthy') {
           setBackendStatus(`OK (${health.service})`);
@@ -27,11 +23,9 @@ function App() {
           setBackendStatus(`Unexpected status: ${health.status}`);
         }
 
-        // 2) Load products
         const prods = await getProducts();
         setProducts(prods);
 
-        // 3) Load existing cart (if any)
         const cart = await getCart();
         setCartItems(cart.items || []);
       } catch (err) {
@@ -43,32 +37,18 @@ function App() {
     init();
   }, []);
 
-  // Handle checkout button
-  async function handleCheckout() {
-    try {
-      setCheckoutMessage('');
+  async function checkout() {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-      const data = await checkoutCart();
-      // Backend returns:
-      //  - empty cart: { "message": "Cart is empty — cannot checkout" }
-      //  - success:    { "message": "Checkout complete", "order_id": 1001, "items_count": N }
+    const res = await fetch(`${apiUrl}/api/v1/checkout`, {
+      method: 'POST',
+    });
 
-      if (data.order_id) {
-        // Refresh cart from backend (should now be empty)
-        const updatedCart = await getCart();
-        setCartItems(updatedCart.items || []);
+    const data = await res.json();
+    setCheckoutMessage(data); // store message in UI
 
-        setCheckoutMessage(
-          `Order ${data.order_id} placed with ${data.items_count} item(s).`
-        );
-      } else {
-        // No order_id, likely empty cart or some error message
-        setCheckoutMessage(data.message || 'Cart is empty — add items before checkout.');
-      }
-    } catch (err) {
-      console.error('Checkout failed:', err);
-      setCheckoutMessage('Checkout failed. Please try again.');
-    }
+    const updatedCart = await getCart();
+    setCartItems(updatedCart.items || []);
   }
 
   return (
@@ -88,14 +68,8 @@ function App() {
               <strong>{p.name}</strong> ({p.category}) – ${p.price}{' '}
               <button
                 onClick={async () => {
-                  try {
-                    setCheckoutMessage(''); // clear old checkout message when cart changes
-                    const updated = await addToCart(p.id, 1);
-                    setCartItems(updated.items || []);
-                  } catch (err) {
-                    console.error('Add to cart failed:', err);
-                    alert('Failed to add item to cart.');
-                  }
+                  const updated = await addToCart(p.id, 1);
+                  setCartItems(updated.items || []);
                 }}
                 style={{ marginLeft: '1rem' }}
               >
@@ -122,8 +96,7 @@ function App() {
           </ul>
 
           <button
-            onClick={handleCheckout}
-            disabled={cartItems.length === 0}
+            onClick={checkout}
             style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}
           >
             Checkout
@@ -132,7 +105,19 @@ function App() {
       )}
 
       {checkoutMessage && (
-        <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>{checkoutMessage}</p>
+        <div
+          style={{
+            marginTop: '2rem',
+            padding: '1rem',
+            backgroundColor: '#e0ffe0',
+            border: '1px solid #00aa00',
+            borderRadius: '5px',
+          }}
+        >
+          <h3>Order Complete</h3>
+          <p>Order ID: {checkoutMessage.order_id}</p>
+          <p>Items Purchased: {checkoutMessage.items_count}</p>
+        </div>
       )}
     </div>
   );
