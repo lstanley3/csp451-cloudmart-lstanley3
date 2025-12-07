@@ -1,33 +1,39 @@
-version: '3.9'
+version: "3.9"
 
 services:
   backend:
     build:
       context: ../applications/backend
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://cloudmart:password@postgres:5432/cloudmart
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=password
-      - JWT_SECRET=dev-secret-key
-      - ALLOWED_ORIGINS=http://localhost:3000
+    image: docker-backend
+    container_name: docker-backend-1
     depends_on:
       - postgres
       - redis
+    environment:
+      # These are here for future DB/cache use – backend is still mostly in-memory
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/cloudmart
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 2s
+      retries: 5
     networks:
       - cloudmart
 
   postgres:
     image: postgres:15-alpine
+    container_name: docker-postgres-1
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=cloudmart
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_USER=cloudmart
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=cloudmart
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -35,15 +41,38 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: docker-redis-1
+    restart: unless-stopped
     ports:
       - "6379:6379"
-    command: redis-server --requirepass password
+    networks:
+      - cloudmart
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: docker-prometheus-1
+    restart: unless-stopped
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - cloudmart
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: docker-grafana-1
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     networks:
       - cloudmart
 
 networks:
   cloudmart:
-    driver: bridge
 
 volumes:
   postgres_data:

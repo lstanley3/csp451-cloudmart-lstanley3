@@ -1,0 +1,26 @@
+{
+  "id": null,
+  "uid": "cloudmart-overview",
+  "title": "CloudMart Overview",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Backend Up Metric",
+      "id": 1,
+      "targets": [
+        {
+          "expr": "up",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PROMETHEUS_DS"
+      }
+    }
+  ]
+}

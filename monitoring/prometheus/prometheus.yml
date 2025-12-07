@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+
+  # Scrape the CloudMart backend
+  - job_name: 'cloudmart-backend'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['backend:8000']
